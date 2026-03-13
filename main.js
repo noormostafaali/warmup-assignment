@@ -44,7 +44,23 @@ function formatTime(seconds) {
 
     return `${hoursStr}:${minutesStr}:${secondsStr}`;
 }
+// Helper 3: Convert time string "hh:mm:ss" to total seconds
+function timeToSeconds(timeStr) {
+    if (typeof timeStr !== 'string') return null;
 
+    let parts = timeStr.trim().split(':');
+    if (parts.length !== 3) return null;
+
+    let hours = parseInt(parts[0]);
+    let minutes = parseInt(parts[1]);
+    let seconds = parseInt(parts[2]);
+
+    if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) return null;
+    if (minutes < 0 || minutes > 59) return null;
+    if (seconds < 0 || seconds > 59) return null;
+
+    return (hours * 3600) + (minutes * 60) + seconds;
+}
 // ============================================================
 // Function 1: getShiftDuration(startTime, endTime)
 // startTime: (typeof string) formatted as hh:mm:ss am or hh:mm:ss pm
@@ -124,10 +140,24 @@ function getIdleTime(startTime, endTime) {
 // idleTime: (typeof string) formatted as h:mm:ss
 // Returns: string formatted as h:mm:ss
 // ============================================================
+// FUNCTION 3: Calculate active time (shiftDuration - idleTime)
 function getActiveTime(shiftDuration, idleTime) {
-    // TODO: Implement this function
-}
+    let shiftSeconds = timeToSeconds(shiftDuration);
+    let idleSeconds = timeToSeconds(idleTime);
 
+    if (shiftSeconds === null || idleSeconds === null) {
+        return "00:00:00";
+    }
+
+    if (idleSeconds > shiftSeconds) {
+        return "00:00:00";
+    }
+
+    let activeSeconds = shiftSeconds - idleSeconds;
+
+    // Active time should NOT have leading zeros for hours (from PDF: "3:30:10", "8:42:59")
+    return formatTime(activeSeconds);
+}
 // ============================================================
 // Function 4: metQuota(date, activeTime)
 // date: (typeof string) formatted as yyyy-mm-dd
