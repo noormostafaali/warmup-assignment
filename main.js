@@ -166,7 +166,45 @@ function getActiveTime(shiftDuration, idleTime) {
 // ============================================================
 function metQuota(date, activeTime) {
     // TODO: Implement this function
+    // EDGE CASE 1: Invalid inputs
+    if (typeof date !== 'string' || !activeTime) {
+        return false;
+    }
+
+    // Parse date
+    let dateParts = date.split('-');
+    if (dateParts.length !== 3) return false;
+
+    let year = parseInt(dateParts[0]);
+    let month = parseInt(dateParts[1]);
+    let day = parseInt(dateParts[2]);
+
+    // EDGE CASE 2: Invalid date numbers
+    if (isNaN(year) || isNaN(month) || isNaN(day)) return false;
+
+    // USE THE GLOBAL timeToSeconds HELPER!
+    let activeSeconds = timeToSeconds(activeTime);
+    if (activeSeconds === null) return false;
+
+    // Determine quota based on date
+    let quotaSeconds;
+
+    // EDGE CASE 3: Eid period (April 10-30, 2025)
+    if (year === 2025 && month === 4 && day >= 10 && day <= 30) {
+        quotaSeconds = 6 * 3600; // 6 hours in seconds
+    } else {
+        // Normal day: 8 hours and 24 minutes
+        quotaSeconds = (8 * 3600) + (24 * 60); // 8h 24m in seconds
+    }
+
+    // EDGE CASE 4: Compare active time with quota
+    return activeSeconds >= quotaSeconds;
+    //If active time is GREATER THAN OR EQUAL to quota → true
+    // If active time is LESS than quota → false
+
 }
+
+
 
 // ============================================================
 // Function 5: addShiftRecord(textFile, shiftObj)
