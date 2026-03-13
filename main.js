@@ -212,10 +212,98 @@ function metQuota(date, activeTime) {
 // shiftObj: (typeof object) has driverID, driverName, date, startTime, endTime
 // Returns: object with 10 properties or empty object {}
 // ============================================================
+// FUNCTION 5: Add a new shift record to the file
 function addShiftRecord(textFile, shiftObj) {
-    // TODO: Implement this function
-}
+    // EDGE CASE 1: Invalid inputs
+    if (!textFile || !shiftObj || typeof shiftObj !== 'object') {
+        return {}; // Return empty object
+    }
 
+    // EDGE CASE 2: Missing required properties
+    let requiredProps = ['driverID', 'driverName', 'date', 'startTime', 'endTime'];
+    for (let prop of requiredProps) {
+        if (!shiftObj[prop]) {
+            return {}; // Return empty object
+        }
+    }
+
+    try {
+        // USING fs.readFileSync() to read the file
+        let fileContent;
+        try {
+            fileContent = fs.readFileSync(textFile, 'utf8');
+        } catch (err) {
+            // EDGE CASE 3: File doesn't exist or can't be read
+            return {}; // Return empty object
+        }
+
+        // Split into lines and remove empty lines
+        let lines = fileContent.split('\n').filter(line => line.trim() !== '');
+
+        // EDGE CASE 4: Check for duplicate (same driverID and date)
+        for (let line of lines) {
+            let columns = line.split(',');
+            if (columns.length >= 3) {
+                let existingDriverID = columns[0].trim();
+                let existingDate = columns[2].trim();
+
+                if (existingDriverID === shiftObj.driverID && existingDate === shiftObj.date) {
+                    return {}; // Duplicate found - return empty object
+                }
+            }
+        }
+
+        // Calculate all the values using our existing functions
+        let shiftDuration = getShiftDuration(shiftObj.startTime, shiftObj.endTime);
+        let idleTime = getIdleTime(shiftObj.startTime, shiftObj.endTime);
+        let activeTime = getActiveTime(shiftDuration, idleTime);
+        let metQuotaValue = metQuota(shiftObj.date, activeTime);
+
+        // Create the new record object with ALL 10 properties
+        let newRecord = {
+            driverID: shiftObj.driverID,        // 1. driverID
+            driverName: shiftObj.driverName,    // 2. driverName
+            date: shiftObj.date,                 // 3. date
+            startTime: shiftObj.startTime,       // 4. startTime
+            endTime: shiftObj.endTime,           // 5. endTime
+            shiftDuration: shiftDuration,        // 6. shiftDuration (calculated)
+            idleTime: idleTime,                   // 7. idleTime (calculated)
+            activeTime: activeTime,               // 8. activeTime (calculated)
+            metQuota: metQuotaValue,              // 9. metQuota (calculated)
+            hasBonus: false                        // 10. hasBonus (default false)
+        };
+
+        // Create the CSV line for the new record
+        let newLine = `${newRecord.driverID},${newRecord.driverName},${newRecord.date},${newRecord.startTime},${newRecord.endTime},${newRecord.shiftDuration},${newRecord.idleTime},${newRecord.activeTime},${newRecord.metQuota},${newRecord.hasBonus}`;
+
+        // Find where to insert the new record
+        let insertIndex = lines.length; // Default to end of file
+
+        if (shiftObj.driverID) {
+            // Look for the LAST occurrence of this driverID
+            for (let i = lines.length - 1; i >= 0; i--) {
+                let columns = lines[i].split(',');
+                if (columns.length >= 1 && columns[0].trim() === shiftObj.driverID) {
+                    insertIndex = i + 1; // Insert AFTER this line
+                    break;
+                }
+            }
+        }
+
+        // Insert the new line at the correct position
+        lines.splice(insertIndex, 0, newLine);
+
+        // USING fs.writeFileSync() to write back to the file
+        fs.writeFileSync(textFile, lines.join('\n') + '\n');
+
+        // SUCCESS: Return object with ALL 10 properties
+        return newRecord;
+
+    } catch (error) {
+        // EDGE CASE 5: Any unexpected error
+        return {}; // Return empty object
+    }
+}
 // ============================================================
 // Function 6: setBonus(textFile, driverID, date, newValue)
 // textFile: (typeof string) path to shifts text file
