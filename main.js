@@ -1,14 +1,78 @@
 const fs = require("fs");
 
+
+
+// Helper 1: Parse time string like "6:01:20 am" to 24-hour format object
+function parseTimeString(timeStr) {
+    if (typeof timeStr !== 'string') return null;
+
+    let parts = timeStr.trim().toLowerCase().split(' ');
+    if (parts.length !== 2) return null;
+
+    let timeParts = parts[0].split(':');
+    if (timeParts.length !== 3) return null;
+
+    let hours = parseInt(timeParts[0]);
+    let minutes = parseInt(timeParts[1]);
+    let seconds = parseInt(timeParts[2]);
+    let period = parts[1];
+
+    if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) return null;
+    if (hours < 1 || hours > 12) return null;
+    if (minutes < 0 || minutes > 59) return null;
+    if (seconds < 0 || seconds > 59) return null;
+    if (period !== 'am' && period !== 'pm') return null;
+
+    // Convert to 24-hour format
+    if (period === 'pm' && hours !== 12) hours += 12;
+    if (period === 'am' && hours === 12) hours = 0;
+
+    return { hours, minutes, seconds };
+}
+// Helper 2: Format seconds to "h:mm:ss" (hours without leading zero)
+function formatTime(seconds) {
+    if (seconds < 0) seconds = 0;
+    if (seconds === null) return "0:00:00";
+
+    let hours = Math.floor(seconds / 3600);
+    let minutes = Math.floor((seconds % 3600) / 60);
+    let secs = seconds % 60;
+
+    let hoursStr = hours.toString(); // NO leading zero
+    let minutesStr = minutes.toString().padStart(2, '0');
+    let secondsStr = secs.toString().padStart(2, '0');
+
+    return `${hoursStr}:${minutesStr}:${secondsStr}`;
+}
+
 // ============================================================
 // Function 1: getShiftDuration(startTime, endTime)
 // startTime: (typeof string) formatted as hh:mm:ss am or hh:mm:ss pm
 // endTime: (typeof string) formatted as hh:mm:ss am or hh:mm:ss pm
 // Returns: string formatted as h:mm:ss
 // ============================================================
+
+// FUNCTION 1: Calculate shift duration
+
 function getShiftDuration(startTime, endTime) {
-    // TODO: Implement this function
+    let start = parseTimeString(startTime);
+    let end = parseTimeString(endTime);
+
+    if (!start || !end) return "0:00:00";
+
+    let startSeconds = (start.hours * 3600) + (start.minutes * 60) + start.seconds;
+    let endSeconds = (end.hours * 3600) + (end.minutes * 60) + end.seconds;
+
+    if (endSeconds < startSeconds) {
+        endSeconds += 24 * 3600;
+    }
+
+    let diffSeconds = endSeconds - startSeconds;
+
+    return formatTime(diffSeconds);
 }
+
+
 
 // ============================================================
 // Function 2: getIdleTime(startTime, endTime)
@@ -16,10 +80,44 @@ function getShiftDuration(startTime, endTime) {
 // endTime: (typeof string) formatted as hh:mm:ss am or hh:mm:ss pm
 // Returns: string formatted as h:mm:ss
 // ============================================================
-function getIdleTime(startTime, endTime) {
-    // TODO: Implement this function
-}
+// FUNCTION 2: Calculate idle time (time outside delivery hours 8am-10pm)
 
+function getIdleTime(startTime, endTime) {
+    let start = parseTimeString(startTime);
+    let end = parseTimeString(endTime);
+
+    if (!start || !end) return "0:00:00";
+
+    let startSeconds = (start.hours * 3600) + (start.minutes * 60) + start.seconds;
+    let endSeconds = (end.hours * 3600) + (end.minutes * 60) + end.seconds;
+
+    if (endSeconds < startSeconds) {
+        endSeconds += 24 * 3600;
+    }
+
+    let deliveryStart = 8 * 3600;
+    let deliveryEnd = 22 * 3600;
+
+    let idleSeconds = 0;
+
+    if (endSeconds <= deliveryStart) {
+        idleSeconds = endSeconds - startSeconds;
+    }
+    else if (startSeconds >= deliveryEnd) {
+        idleSeconds = endSeconds - startSeconds;
+    }
+    else {
+        if (startSeconds < deliveryStart) {
+            idleSeconds += deliveryStart - startSeconds;
+        }
+        if (endSeconds > deliveryEnd) {
+            idleSeconds += endSeconds - deliveryEnd;
+        }
+    }
+
+    return formatTime(idleSeconds);
+
+}
 // ============================================================
 // Function 3: getActiveTime(shiftDuration, idleTime)
 // shiftDuration: (typeof string) formatted as h:mm:ss
